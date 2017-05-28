@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/white"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:id="@+id/content_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <include
+            android:id="@+id/success_view"
+            layout="@layout/coupon_success_view"
+            android:visibility="gone" />
+
+        <include
+            android:id="@+id/failure_view"
+            layout="@layout/coupon_failure_view"
+            android:visibility="gone" />
+
+        <include
+            android:id="@+id/status_view"
+            layout="@layout/coupon_status_layout" />
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/close_fragment_IV"
+        android:layout_width="40dp"
+        android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentTop="true"
+        android:layout_gravity="end|top"
+        android:adjustViewBounds="true"
+        android:padding="8dp"
+        android:src="@android:drawable/ic_menu_close_clear_cancel" />
+
+    <android.support.v7.widget.RecyclerView
+        android:id="@+id/recycler_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/content_view"
+        android:layout_marginTop="16dp" />
+
+</RelativeLayout>

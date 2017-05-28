@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">BuyHutkeAssignment</string>
+    <string name="action_settings">Settings</string>
+    <string name="got_off_string">You got ₹%d OFF!</string>
+    <string name="applied_coupon">with coupon <u><b>%s</b></u></string>
+    <string name="we_applied_coupon">We have applied a coupon that gives you</string>
+    <string name="we_applied_coupon_amount"><big><b><font color="#008000">₹%d</font></b></big> <b>OFF</b> for this purchase!</string>
+</resources>

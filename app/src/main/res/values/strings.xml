@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">BuyHutkeAssignment</string>
+    <string name="app_name">BuyHatke Assignment</string>
     <string name="action_settings">Settings</string>
     <string name="got_off_string">You got ₹%d OFF!</string>
     <string name="applied_coupon">with coupon <u><b>%s</b></u></string>

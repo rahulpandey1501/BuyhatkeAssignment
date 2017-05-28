@@ -7,7 +7,6 @@ import android.os.Handler;
 import android.os.Message;
 import android.support.v4.app.FragmentManager;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.webkit.JavascriptInterface;
@@ -71,7 +70,7 @@ public class CustomJabongWebView extends AppCompatActivity {
         @JavascriptInterface
         public void checkForErrorCoupon(String element) {
             if (!isNull(element)) {
-                Log.d("coupon", "presenr");
+                // Log.d("coupon", "presenr");
                 stopCheckingForError();
                 handler.sendEmptyMessage(COUPON_ERROR);
             }
@@ -130,41 +129,74 @@ public class CustomJabongWebView extends AppCompatActivity {
         webViewClient = new WebViewClient() {
             @Override
             public void onPageFinished(WebView view, String url) {
+                // Log.d("finished", url);
                 tryCouponsImageVIew.setVisibility(View.GONE);
                 if (isProcessStart) {
                     if (url.contains(Constants.JabongConstants.COUPON_PAGE_IDENTIFIER)) {
                         processCouponPage();
                     } else if (url.contains(Constants.JabongConstants.CART_PAGE_IDENTIFIER)) {
+                        if (!isCheckForCouponErrorFinished) {
+                            // Log.d("visible", "stop checking");
+                            isCouponApplied = true;
+                            stopCheckingForError();
+                        }
                         processCartPage();
                     }
-                } else if (url.contains(Constants.JabongConstants.CART_PAGE_IDENTIFIER)
+                }
+                else if (url.contains(Constants.JabongConstants.CART_PAGE_IDENTIFIER)
                         && !url.contains(Constants.JabongConstants.COUPON_PAGE_IDENTIFIER)) {
                     tryCouponsImageVIew.setVisibility(View.VISIBLE);
                 }
-
                 super.onPageFinished(view, url);
+            }
+
+            @Override
+            public void onPageCommitVisible(WebView view, String url) {
+                super.onPageCommitVisible(view, url);
+                if (!isProcessStart && url.contains(Constants.JabongConstants.CART_PAGE_IDENTIFIER)
+                        && !url.contains(Constants.JabongConstants.COUPON_PAGE_IDENTIFIER)) {
+                    tryCouponsImageVIew.setVisibility(View.VISIBLE);
+                }
             }
 
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView view, String url) {
                 if (isProcessStart) {
-                    if (url.contains(Constants.JabongConstants.COUPON_APPLIED_RESPONSE_IDENTIFIER)
-                            && !isCheckForCouponErrorFinished) {
-                        isCouponApplied = true;
-                        stopCheckingForError();
-                    } else if (url.contains(Constants.JabongConstants.COUPON_APPLIED_IDENTIFIER)) {
+                    if (url.contains(Constants.JabongConstants.COUPON_APPLIED_IDENTIFIER)) {
                         startCheckingForCouponErrorResponse();
-                    }
-                    //else if (url.contains(Constants.JabongConstants.REMOVE_COUPON_IDENTIFIER)) {}
+                    }//else if (url.contains(Constants.JabongConstants.REMOVE_COUPON_IDENTIFIER)) {}
                 }
                 return super.shouldInterceptRequest(view, url);
             }
         };
     }
 
+    private void setupWebviewSetting() {
+        webView.getSettings().setAppCacheEnabled(true);
+        webView.getSettings().setDomStorageEnabled(true);
+        webView.getSettings().setLoadsImagesAutomatically(true);
+        webView.getSettings().setJavaScriptEnabled(true);
+        webView.getSettings().setAllowContentAccess(true);
+        webView.addJavascriptInterface(new JSInterface(), "JSInterface");
+        webView.setWebChromeClient(new WebChromeClient(){
+            public void onProgressChanged(WebView view, int progress)
+            {
+                if(progress < 100 && webviewProgressBar.getVisibility() == ProgressBar.GONE){
+                    webviewProgressBar.setVisibility(ProgressBar.VISIBLE);
+                }
+                webviewProgressBar.setProgress(progress);
+                if(progress == 100) {
+                    webviewProgressBar.setVisibility(ProgressBar.GONE);
+                }
+            }
+        });
+        webView.setWebViewClient(webViewClient);
+    }
+
     private void startProcess() {
         resetLocalData();
         isProcessStart = true;
+        isCartPage = true;
         setOriginalPrice();
         showLoadingDialog("Fetching coupons...");
         new GetBuyHatkeCoupons(new GetBuyHatkeCoupons.BuyHatkeAPI(){
@@ -228,27 +260,6 @@ public class CustomJabongWebView extends AppCompatActivity {
         }
     }
 
-    private void setupWebviewSetting() {
-        webView.getSettings().setJavaScriptEnabled(true);
-        webView.getSettings().setAppCacheEnabled(true);
-        webView.getSettings().setDomStorageEnabled(true);
-        webView.getSettings().setLoadsImagesAutomatically(true);
-        webView.addJavascriptInterface(new JSInterface(), "JSInterface");
-        webView.setWebViewClient(webViewClient);
-        webView.setWebChromeClient(new WebChromeClient(){
-            public void onProgressChanged(WebView view, int progress)
-            {
-                if(progress < 100 && webviewProgressBar.getVisibility() == ProgressBar.GONE){
-                    webviewProgressBar.setVisibility(ProgressBar.VISIBLE);
-                }
-                webviewProgressBar.setProgress(progress);
-                if(progress == 100) {
-                    webviewProgressBar.setVisibility(ProgressBar.GONE);
-                }
-            }
-        });
-    }
-
     private void setupHandler() {
         handler = new Handler(new Handler.Callback() {
             @Override
@@ -286,7 +297,7 @@ public class CustomJabongWebView extends AppCompatActivity {
 
                     case REMOVE_COUPON:
                         isCouponApplied = false;
-                        executeRunnableScript(Constants.JabongConstants.HAVE_COUPON_JS, 1000);
+                        tryForOtherCoupons();
                 }
                 return true;
             }
@@ -363,11 +374,12 @@ public class CustomJabongWebView extends AppCompatActivity {
 
     private void hideLoadingDialog() {
         if (progressDialog != null && progressDialog.isShowing()) {
-            progressDialog.hide();
+            progressDialog.dismiss();
         }
     }
 
     private void tryForOtherCoupons() {
+        // Log.d("try", "Try Coupon "+isCouponApplied);
         if (couponCount == couponList.size()) {
             checkForBudgetCouponApplied();
         }
@@ -379,18 +391,21 @@ public class CustomJabongWebView extends AppCompatActivity {
                 publishResult();
             }
         } else if (isCouponApplied) {
+            // Log.d("try", "couponapplied");
             removeCoupon();
         } else if (isCartPage) {
-            executeJavascript(Constants.JabongConstants.HAVE_COUPON_JS, EMPTY_MESSAGE);
+            // Log.d("try", "cart page");
+            executeJavascriptWithDelay(Constants.JabongConstants.HAVE_COUPON_JS, EMPTY_MESSAGE, 1000);
         } else if (isCouponPage) {
+            // Log.d("try", "coupon page");
             applyCoupon(couponList.get(couponCount++).getCoupon());
         }
     }
 
     private void checkForBudgetCouponApplied() {
-        Log.d("budget", "enters");
+        // Log.d("budget", "enters");
         if (!isNull(budgetCoupon) && !currentCoupon.equals(budgetCoupon.getCoupon())) {
-            Log.d("budget", "enters "+isCartPage+"  "+budgetCoupon.getCoupon()+"  "+currentCoupon);
+            // Log.d("budget", "enters "+isCartPage+"  "+budgetCoupon.getCoupon()+"  "+currentCoupon);
             if (isCartPage) {
                 removeCoupon();
             } else {
@@ -406,7 +421,7 @@ public class CustomJabongWebView extends AppCompatActivity {
     private void applyCoupon(String coupon) {
         currentCoupon = coupon;
         executeJavascript(String.format(Constants.JabongConstants.FILL_COUPON_JS, coupon), EMPTY_MESSAGE);
-        executeRunnableScript(Constants.JabongConstants.APPLY_COUPON_JS, 1000);
+        executeJavascriptWithDelay(Constants.JabongConstants.APPLY_COUPON_JS, EMPTY_MESSAGE, 500);
     }
 
     private void removeCoupon() {
@@ -431,7 +446,7 @@ public class CustomJabongWebView extends AppCompatActivity {
                     if (what == EMPTY_MESSAGE) {
                         handler.sendEmptyMessage(what);
                     } else {
-                        Log.d("Execute", "Value "+value);
+                        // Log.d("Execute", "Value "+value);
                         Message message = new Message();
                         message.what = what;
                         Bundle bundle = new Bundle();
@@ -444,10 +459,10 @@ public class CustomJabongWebView extends AppCompatActivity {
         } else {
             webView.loadUrl("javascript:" + js);
         }
-        Log.d("Execute", js);
+        // Log.d("Execute", js);
     }
 
-    private void executeRunnableScript(final String script, final int timeInMs) {
+    private void executeJavascriptWithDelay(final String script, final int what, final int timeInMs) {
         handler.post(new Runnable() {
             @Override
             public void run() {
@@ -456,7 +471,7 @@ public class CustomJabongWebView extends AppCompatActivity {
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
-                executeJavascript(script, EMPTY_MESSAGE);
+                executeJavascript(script, what);
             }
         });
     }
